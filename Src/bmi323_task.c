@@ -254,7 +254,7 @@ int8_t Open_BMI323_ACC(struct bmi3_dev *dev)
 	#endif
 
 
-		config.cfg.acc.odr = BMI3_ACC_ODR_400HZ;
+		config.cfg.acc.odr = BMI3_ACC_ODR_1600HZ; //BMI3_ACC_ODR_400HZ;
 
 		/* Gravity range of the sensor (+/- 2G, 4G, 8G, 16G). */
 		config.cfg.acc.range     = BMI3_ACC_RANGE_4G;
@@ -327,7 +327,7 @@ int8_t Open_BMI323_GYRO(struct bmi3_dev *dev)
 	rslt = bmi323_get_sensor_config(&config, 1, dev);
 	if (rslt == BMI3_OK) 
 	{
-		config.cfg.gyr.odr = BMI3_GYR_ODR_400HZ;
+		config.cfg.gyr.odr = BMI3_GYR_ODR_1600HZ; //BMI3_GYR_ODR_400HZ;
 		/* Gyroscope Angular Rate Measurement Range. By default the range is 2000dps. */
 		config.cfg.gyr.range = BMI3_GYR_RANGE_250DPS;
 
@@ -903,13 +903,23 @@ void BMI323_Timer_Callback(TimerHandle_t xTimer)
 }
 #endif
 
-uint8_t read_sensor(uint8_t index, uint8_t gyrdata_x, uint8_t gyrdata_y, uint8_t gyrdata_z)
+
+int16_t gyro_data[3];
+int16_t acc_data[3];
+
+uint8_t read_sensor(uint8_t index, float arr[])
 {
-	uint8_t tmp_regs[16];
+	uint8_t acc_regs[6];
+	uint8_t gyr_regs[6];
 	uint8_t rslt;
-	uint8_t chip_id;
-	uint16_t gyro_data[3];
-	float x = 0, y = 0, z = 0;
+//	uint8_t chip_id;
+
+	uint8_t temp[2];
+
+
+
+	float gyr_x, gyr_y, gyr_z, acc_x, acc_y, acc_z;
+	uint16_t temper;
 
 	switch (index)
 	{
@@ -924,20 +934,41 @@ uint8_t read_sensor(uint8_t index, uint8_t gyrdata_x, uint8_t gyrdata_y, uint8_t
 		case 8:
 		case 9:
 		case 10:
-			//rslt = bmi3_get_regs(BMI3_REG_CHIP_ID, &chip_id, 1, &dev);
+//			rslt = bmi3_get_regs(BMI3_REG_CHIP_ID, &chip_id, 1, &dev);
 //			rslt = bmi323_get_sensor_data(&sensor_data, 1, &dev);
-			rslt = bmi3_get_regs(BMI3_REG_GYR_DATA_X, &tmp_regs, 6, &dev);
-			gyro_data[0] = (tmp_regs[0] | (uint16_t)tmp_regs[1] << 8);
-			gyro_data[1] = (tmp_regs[2] | (uint16_t)tmp_regs[3] << 8);
-			gyro_data[2] = (tmp_regs[4] | (uint16_t)tmp_regs[5] << 8);
+			rslt = bmi3_get_regs(BMI3_REG_GYR_DATA_X, &gyr_regs, 6, &dev);
+			gyro_data[0] = (gyr_regs[0] | (uint16_t)gyr_regs[1] << 8);
+			gyro_data[1] = (gyr_regs[2] | (uint16_t)gyr_regs[3] << 8);
+			gyro_data[2] = (gyr_regs[4] | (uint16_t)gyr_regs[5] << 8);
 
-			x = lsb_to_dps(gyro_data[0], (float)250, dev.resolution);
-			y = lsb_to_dps(gyro_data[1], (float)250, dev.resolution);
-			z = lsb_to_dps(gyro_data[2], (float)250, dev.resolution);
+			rslt = bmi3_get_regs(BMI3_REG_TEMP_DATA, &temp, 2, &dev);
+			temper = (temp[0] | (uint16_t)temp[1] << 8);
+
+			rslt = bmi3_get_regs(BMI3_REG_ACC_DATA_X, &acc_regs, 6, &dev);
+			acc_data[0] = (acc_regs[0] | (uint16_t)acc_regs[1] << 8);
+			acc_data[1] = (acc_regs[2] | (uint16_t)acc_regs[3] << 8);
+			acc_data[2] = (acc_regs[4] | (uint16_t)acc_regs[5] << 8);
+
+			gyr_x = lsb_to_dps(gyro_data[0], (float)250, dev.resolution);
+			gyr_y = lsb_to_dps(gyro_data[1], (float)250, dev.resolution);
+			gyr_z = lsb_to_dps(gyro_data[2], (float)250, dev.resolution);
+
+			acc_x = lsb_to_mps2(acc_data[0], 2, dev.resolution);
+			acc_y = lsb_to_mps2(acc_data[1], 2, dev.resolution);
+			acc_z = lsb_to_mps2(acc_data[2], 2, dev.resolution);
 
 //			PDEBUG("Sensor Idx=%d Data=%X\r\n",index, tmp_regs[0]);
-			PDEBUG("X axes: %d, Y axes: %d, Z axes: %d\r\n", x, y, z);
+//			PDEBUG("GYRO: X axis: %4d, Y axis: %4d, Z axis: %4d\r\n", gyro_data[0], gyro_data[1], gyro_data[2]);
+			PDEBUG("GYRO: X axis: %4.2f, Y axis: %4.2f, Z axis: %4.2f\r\n", gyr_x, gyr_y, gyr_z);
+//			PDEBUG("ACC: X axis: %4.2f, Y axis: %4.2f, Z axis: %4.2f\r\n", acc_x, acc_y, acc_z);
+//			PDEBUG("Temperature = %d\r\n", (temper / 512 + 23));
 
+			arr[0] = gyr_x;
+			arr[1] = gyr_y;
+			arr[2] = gyr_z;
+			arr[3] = acc_x;
+			arr[4] = acc_y;
+			arr[5] = acc_z;
 
 		default:
 			//never run to here
@@ -958,8 +989,12 @@ uint8_t read_sensor(uint8_t index, uint8_t gyrdata_x, uint8_t gyrdata_y, uint8_t
 void StartBMI323Task(void const * argument)
 {
 	uint32_t notify_value;
-	uint8_t gyrdata_x, gyrdata_y, gyrdata_z, sensor_idx = 0;
+	uint8_t sensor_idx = 0;
 	int8_t rslt = BMI3_OK;
+//	float gyr_x, gyr_y, gyr_z, acc_x, acc_y, acc_z;
+	float sensor_data[6];
+	uint8_t flag;
+//	uint16_t temper;
 
 	Init_BMI323(&dev);
 	
@@ -967,20 +1002,24 @@ void StartBMI323Task(void const * argument)
 	// create sensor index counter
 	// read 11 sensor within 10ms, so set timer interrupt to 10ms/11
 
-	#if defined(FIFO_POLL)
 	// Change delay (0.5s now)
-	BMI323_Timer_Handler = xTimerCreate("ReadTimer", 500, pdTRUE, (void *)1, BMI323_Timer_Callback);
+	BMI323_Timer_Handler = xTimerCreate("ReadTimer", 100, pdTRUE, (void *)1, BMI323_Timer_Callback);
 	if(BMI323_Timer_Handler != NULL)
 	{
 		xTimerStart(BMI323_Timer_Handler, 1000);
 	}
-	#endif
+	BMI323_Print_ALLRegs(&dev);
 
 	for(;;)
 	{
-		if(xTaskNotifyWait(0,0,&notify_value, portMAX_DELAY ))
+		if(xTaskNotifyWait(0, 0, &notify_value, portMAX_DELAY ))
 		{
-			read_sensor(sensor_idx, gyrdata_x, gyrdata_y, gyrdata_z);
+			bmi3_get_regs(BMI3_REG_STATUS, &flag, 1, &dev);
+			if((flag & 0x40) == 0) continue;
+			read_sensor(sensor_idx, sensor_data);
+//			PDEBUG("GYRO: X axes: %4d, Y axes: %4d, Z axes: %4d\r\n", sensor_data[0], sensor_data[1], sensor_data[2]);
+//			PDEBUG("ACC: X axes: %4.2f, Y axes: %4.2f, Z axes: %4.2f\r\n", acc_data[0], acc_data[1], acc_data[2]);
+//			PDEBUG("Temperature = %d\r\n", (temper / 512 + 23));
 
 			if(sensor_idx >= 10) sensor_idx =0;
 			else sensor_idx++;

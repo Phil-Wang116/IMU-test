@@ -37,7 +37,7 @@ void StartBMI323Task(void const * argument);
 void BMI323_Timer_Callback(TimerHandle_t xTimer);
 #endif
 
-uint8_t read_sensor(uint8_t index, uint8_t gyrdata_x, uint8_t gyrdata_y, uint8_t gyrdata_z);
+uint8_t read_sensor(uint8_t index, float arr[]);
 
 #if defined(STEP_COUNTER)
 int8_t Open_BMI323_STEP_COUNTER(struct bmi3_dev *dev);

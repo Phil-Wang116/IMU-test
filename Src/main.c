@@ -25,6 +25,7 @@
 /* USER CODE BEGIN Includes */
 #include "user_define.h"
 #include "bmi323_task.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -64,6 +65,7 @@ static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI1_Init(void);
 void StartDefaultTask(void const * argument);
+//void StartBMI323Task1(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -108,8 +110,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   osThreadDef(BMI323Task, StartBMI323Task, osPriorityNormal, 0, 256);
   BMI323TaskHandle = osThreadCreate(osThread(BMI323Task), NULL);
-  int start = 1;
- // StartBMI323Task(&start);
+//  osThreadDef(BMI323Task, StartBMI323Task1, osPriorityNormal, 0, 256);
+//  BMI323TaskHandle = osThreadCreate(osThread(BMI323Task), NULL);
+
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
